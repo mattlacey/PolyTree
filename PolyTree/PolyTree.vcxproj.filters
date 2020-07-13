@@ -13,6 +13,15 @@
       <UniqueIdentifier>{67DA6AB6-F800-4c08-8B7A-83BB121AAD01}</UniqueIdentifier>
       <Extensions>rc;ico;cur;bmp;dlg;rc2;rct;bin;rgs;gif;jpg;jpeg;jpe;resx;tiff;tif;png;wav;mfcribbon-ms</Extensions>
     </Filter>
+    <Filter Include="Source Files\Atari">
+      <UniqueIdentifier>{9728ccfa-f759-46c2-a827-b201d4bc2673}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Header Files\Atari">
+      <UniqueIdentifier>{330e69d1-e4f2-4461-b726-36eed977e8c4}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Data">
+      <UniqueIdentifier>{cddff4fe-09a8-4368-a820-5ac7547c37e9}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="src\glad.c">
@@ -40,6 +49,27 @@
       <Filter>Source Files</Filter>
     </ClCompile>
     <ClCompile Include="src\ImGuiFileBrowser.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="atari-src\FX.C">
+      <Filter>Source Files\Atari</Filter>
+    </ClCompile>
+    <ClCompile Include="atari-src\MATRIX.C">
+      <Filter>Source Files\Atari</Filter>
+    </ClCompile>
+    <ClCompile Include="atari-src\OBJ.C">
+      <Filter>Source Files\Atari</Filter>
+    </ClCompile>
+    <ClCompile Include="atari-src\TRI.C">
+      <Filter>Source Files\Atari</Filter>
+    </ClCompile>
+    <ClCompile Include="atari-src\VECTOR.C">
+      <Filter>Source Files\Atari</Filter>
+    </ClCompile>
+    <ClCompile Include="src\AtariObj.cpp">
+      <Filter>Source Files</Filter>
+    </ClCompile>
+    <ClCompile Include="src\Shader.cpp">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
@@ -71,5 +101,48 @@
     <ClInclude Include="include\ImGuiFileBrowser.h">
       <Filter>Header Files</Filter>
     </ClInclude>
+    <ClInclude Include="atari-src\FRAMEWRK.H">
+      <Filter>Header Files\Atari</Filter>
+    </ClInclude>
+    <ClInclude Include="atari-src\FX.H">
+      <Filter>Header Files\Atari</Filter>
+    </ClInclude>
+    <ClInclude Include="atari-src\MATRIX.H">
+      <Filter>Header Files\Atari</Filter>
+    </ClInclude>
+    <ClInclude Include="atari-src\OBJ.H">
+      <Filter>Header Files\Atari</Filter>
+    </ClInclude>
+    <ClInclude Include="atari-src\TRI.H">
+      <Filter>Header Files\Atari</Filter>
+    </ClInclude>
+    <ClInclude Include="atari-src\VECTOR.H">
+      <Filter>Header Files\Atari</Filter>
+    </ClInclude>
+    <ClInclude Include="include\AtariObj.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+    <ClInclude Include="include\Shader.h">
+      <Filter>Header Files</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="objects\ACE.OBJ">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="objects\CUBE.OBJ">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="objects\MONKEY.OBJ">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="vertex.glsl">
+      <Filter>Resource Files</Filter>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="frag.glsl">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
   </ItemGroup>
 </Project>

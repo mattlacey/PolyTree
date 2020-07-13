@@ -74,7 +74,7 @@
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <LinkIncremental>true</LinkIncremental>
-    <IncludePath>X:\Dev\C++\PolyTree\PolyTree\include;X:\Dev\Include;$(IncludePath)</IncludePath>
+    <IncludePath>X:\Dev\C++\PolyTree\PolyTree\atari-src;X:\Dev\C++\PolyTree\PolyTree\include;X:\Dev\Include;$(IncludePath)</IncludePath>
     <LibraryPath>X:\Dev\Libs;$(LibraryPath)</LibraryPath>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
@@ -141,6 +141,12 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="atari-src\FX.C" />
+    <ClCompile Include="atari-src\MATRIX.C" />
+    <ClCompile Include="atari-src\OBJ.C" />
+    <ClCompile Include="atari-src\TRI.C" />
+    <ClCompile Include="atari-src\VECTOR.C" />
+    <ClCompile Include="src\AtariObj.cpp" />
     <ClCompile Include="src\glad.c" />
     <ClCompile Include="src\imgui.cpp" />
     <ClCompile Include="src\ImGuiFileBrowser.cpp" />
@@ -150,8 +156,16 @@
     <ClCompile Include="src\imgui_impl_opengl3.cpp" />
     <ClCompile Include="src\imgui_widgets.cpp" />
     <ClCompile Include="src\main.cpp" />
+    <ClCompile Include="src\Shader.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="atari-src\FRAMEWRK.H" />
+    <ClInclude Include="atari-src\FX.H" />
+    <ClInclude Include="atari-src\MATRIX.H" />
+    <ClInclude Include="atari-src\OBJ.H" />
+    <ClInclude Include="atari-src\TRI.H" />
+    <ClInclude Include="atari-src\VECTOR.H" />
+    <ClInclude Include="include\AtariObj.h" />
     <ClInclude Include="include\imconfig.h" />
     <ClInclude Include="include\imgui.h" />
     <ClInclude Include="include\ImGuiFileBrowser.h" />
@@ -161,6 +175,25 @@
     <ClInclude Include="include\imstb_rectpack.h" />
     <ClInclude Include="include\imstb_textedit.h" />
     <ClInclude Include="include\imstb_truetype.h" />
+    <ClInclude Include="include\Shader.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <CopyFileToFolders Include="frag.glsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
+    <None Include="objects\ACE.OBJ">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="objects\CUBE.OBJ">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="objects\MONKEY.OBJ">
+      <FileType>Document</FileType>
+    </None>
+    <None Include="vertex.glsl">
+      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
+    </None>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

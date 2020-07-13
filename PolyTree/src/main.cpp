@@ -10,6 +10,9 @@
 
 #include "ImGuiFileBrowser.h"
 
+#include "AtariObj.h"
+#include "Shader.h"
+
 #define OPEN_FILE "Open File"
 
 void fbSizeCallback(GLFWwindow* window, int width, int height)
@@ -31,6 +34,9 @@ int main(int argc, char** argv)
     glfwWindowHint(GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     const char* glsl_version = "#version 130";
     char textBuffer[1024];
+    textBuffer[0] = '\0';
+
+    AtariObj* obj = NULL;
 
     GLFWwindow* window = glfwCreateWindow(800, 600, "PolyTree", NULL, NULL);
 
@@ -70,6 +76,8 @@ int main(int argc, char** argv)
     imgui_addons::ImGuiFileBrowser fileDialog; // As a class member or globally
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
+ 
+    Shader* s = new Shader("vertex.glsl", "frag.glsl");
 
     // Main loop
     while (!glfwWindowShouldClose(window))
@@ -95,6 +103,11 @@ int main(int argc, char** argv)
                     showFileDialog = true;
                 }
 
+                if (ImGui::MenuItem("Quit", NULL))
+                {
+					glfwSetWindowShouldClose(window, true);
+                }
+
                 ImGui::EndMenu();
             }
 
@@ -110,9 +123,27 @@ int main(int argc, char** argv)
         {
             std::cout << fileDialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
             std::cout << fileDialog.selected_path << std::endl;    // The absolute path to the selected file
-            strcpy(textBuffer, fileDialog.selected_fn.c_str());
+            strcpy(textBuffer, fileDialog.selected_path.c_str());
             showFileDialog = false;
+
+            if (obj)
+            {
+                delete obj;
+            }
+
+            obj = new AtariObj(textBuffer);
         }
+
+        ImGui::Begin("Object Info", NULL);
+        ImGui::SetWindowSize(ImVec2(400.0f, 100.0f));
+        ImGui::Text("Current File: %s\n", textBuffer);
+
+        if (obj)
+        {
+            ImGui::Text("Vert Count: %i\nFace Count: %i\n", obj->o.vertCount, obj->o.faceCount);
+        }
+
+        ImGui::End();
 
         // Rendering
         ImGui::Render();
@@ -123,6 +154,14 @@ int main(int argc, char** argv)
 
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
+
+        s->Use();
+
+        if (obj)
+        {
+            obj->Render();
+        }
+
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
 
         glfwSwapBuffers(window);
@@ -132,6 +171,13 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Shutdown();
     ImGui_ImplGlfw_Shutdown();
     ImGui::DestroyContext();
+
+    if (obj)
+    {
+        delete obj;
+    }
+
+    delete s;
 
     glfwDestroyWindow(window);
     glfwTerminate();
