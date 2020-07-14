@@ -135,13 +135,14 @@ int main(int argc, char** argv)
         }
 
         ImGui::Begin("Object Info", NULL);
-        ImGui::SetWindowSize(ImVec2(400.0f, 100.0f));
         ImGui::Text("Current File: %s\n", textBuffer);
 
         if (obj)
         {
             ImGui::Text("Vert Count: %i\nFace Count: %i\n", obj->o.vertCount, obj->o.faceCount);
         }
+
+        ImGui::Text("Shader output:\n%s", s->errorLog);
 
         ImGui::End();
 

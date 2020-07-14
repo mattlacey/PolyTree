@@ -136,12 +136,12 @@
     <None Include="objects\MONKEY.OBJ">
       <Filter>Data</Filter>
     </None>
-    <None Include="vertex.glsl">
-      <Filter>Resource Files</Filter>
-    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="frag.glsl">
+      <Filter>Resource Files</Filter>
+    </CopyFileToFolders>
+    <CopyFileToFolders Include="vertex.glsl">
       <Filter>Resource Files</Filter>
     </CopyFileToFolders>
   </ItemGroup>

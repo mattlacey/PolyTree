@@ -191,9 +191,10 @@
     <None Include="objects\MONKEY.OBJ">
       <FileType>Document</FileType>
     </None>
-    <None Include="vertex.glsl">
+    <CopyFileToFolders Include="vertex.glsl">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
-    </None>
+      <FileType>Document</FileType>
+    </CopyFileToFolders>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">
