@@ -4,6 +4,10 @@
 #include <glad/glad.h>
 #include <GLFW/glfw3.h>
 
+#include <glm/glm.hpp>
+#include <glm/gtc/matrix_transform.hpp>
+#include <glm/gtc/type_ptr.hpp>
+
 #include <imgui.h>
 #include <imgui_impl_glfw.h>
 #include <imgui_impl_opengl3.h>
@@ -35,6 +39,9 @@ int main(int argc, char** argv)
     const char* glsl_version = "#version 130";
     char textBuffer[1024];
     textBuffer[0] = '\0';
+    float rot = 0.0f, rotSpeed = 0.0f;
+    glm::mat4 projection, view;
+
 
     AtariObj* obj = NULL;
 
@@ -57,6 +64,9 @@ int main(int argc, char** argv)
 
     glViewport(0, 0, 800, 600);
     glfwSetFramebufferSizeCallback(window, fbSizeCallback);
+
+    view = glm::mat4(1.0f);
+    view = glm::translate(view, glm::vec3(0.0, 0.0, -5.0));
 
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
@@ -142,7 +152,9 @@ int main(int argc, char** argv)
             ImGui::Text("Vert Count: %i\nFace Count: %i\n", obj->o.vertCount, obj->o.faceCount);
         }
 
-        ImGui::Text("Shader output:\n%s", s->errorLog);
+        ImGui::SliderFloat("Y Rotation", &rotSpeed, -.1f, .1f);
+
+        // ImGui::Text("Shader output:\n%s", s->errorLog);
 
         ImGui::End();
 
@@ -153,6 +165,8 @@ int main(int argc, char** argv)
         glfwGetFramebufferSize(window, &display_w, &display_h);
         glViewport(0, 0, display_w, display_h);
 
+        projection = glm::perspective(glm::radians(45.0f), (float)display_w / (float)display_h, 0.1f, 100.0f);
+
         glClearColor(clear_color.x, clear_color.y, clear_color.z, clear_color.w);
         glClear(GL_COLOR_BUFFER_BIT);
 
@@ -160,6 +174,30 @@ int main(int argc, char** argv)
 
         if (obj)
         {
+            glm::mat4 trans = glm::mat4(1.0f);
+            trans = glm::rotate(trans, glm::radians(30.0f), glm::vec3(1.0, 0.0, 0.0));
+            trans = glm::rotate(trans, glm::radians(rot), glm::vec3(0.0, 1.0, 0.0));
+            trans = glm::scale(trans, glm::vec3(0.5, 0.5, 0.5));
+
+            rot += rotSpeed;
+            if (rot >= 360.0f)
+            {
+                rot -= 360.0f;
+            }
+            else if (rot <= 0.0f)
+            {
+                rot += 360.0f;
+            }
+
+            unsigned int transformLoc = glGetUniformLocation(s->programId, "transform");
+            glUniformMatrix4fv(transformLoc, 1, GL_FALSE, glm::value_ptr(trans));
+
+            unsigned int cameraLoc = glGetUniformLocation(s->programId, "camera");
+            glUniformMatrix4fv(cameraLoc, 1, GL_FALSE, glm::value_ptr(view));
+
+            unsigned int projLoc = glGetUniformLocation(s->programId, "projection");
+            glUniformMatrix4fv(projLoc, 1, GL_FALSE, glm::value_ptr(projection));
+
             obj->Render();
         }
 

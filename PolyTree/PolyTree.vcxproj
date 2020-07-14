@@ -182,6 +182,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">false</ExcludedFromBuild>
       <FileType>Document</FileType>
     </CopyFileToFolders>
+    <None Include="..\README.md" />
     <None Include="objects\ACE.OBJ">
       <FileType>Document</FileType>
     </None>

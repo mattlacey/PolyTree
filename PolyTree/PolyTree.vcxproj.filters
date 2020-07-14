@@ -136,6 +136,7 @@
     <None Include="objects\MONKEY.OBJ">
       <Filter>Data</Filter>
     </None>
+    <None Include="..\README.md" />
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="frag.glsl">

@@ -25,9 +25,9 @@ void AtariObj::SetupBuffers()
 
     for (int i = 0; i < o.vertCount; i++)
     {
-        fpVerts[i * 3 + 0] = (o.verts[i].x / 65536.0f) * 0.5f;
-        fpVerts[i * 3 + 1] = (o.verts[i].y / 65536.0f) * 0.5f;
-        fpVerts[i * 3 + 2] = (o.verts[i].z / 65536.0f) * 0.5f;
+        fpVerts[i * 3 + 0] = (o.verts[i].x / 65536.0f);
+        fpVerts[i * 3 + 1] = (o.verts[i].y / 65536.0f);
+        fpVerts[i * 3 + 2] = (o.verts[i].z / 65536.0f);
     }
 
     glBufferData(GL_ARRAY_BUFFER, o.vertCount * sizeof(float) * 3, fpVerts, GL_STATIC_DRAW);
@@ -45,6 +45,6 @@ void AtariObj::Render()
 {
     glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
     glBindVertexArray(VAO);
-    glDrawElements(GL_TRIANGLES, o.faceCount, GL_UNSIGNED_INT, 0);
+    glDrawElements(GL_TRIANGLES, o.indexCount, GL_UNSIGNED_INT, 0);
     glBindVertexArray(0);
 }
