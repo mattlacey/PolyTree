@@ -12,6 +12,7 @@ AtariObj::AtariObj(char* filename)
 	o = loadObj(filename);
     fpVerts = NULL;
     SetupBuffers();
+    GenerateTree();
 }
 
 void AtariObj::SetupBuffers()
@@ -53,6 +54,11 @@ void AtariObj::GenerateTree()
 {
     o.pRootNode = (ObjNode*)malloc(sizeof(ObjNode));
     std::vector<ObjFace> faces(o.faceCount);
+
+    for (int i = 0; i < o.faceCount; i++)
+    {
+        faces.push_back(o.faces[i]);
+    }
     std::random_shuffle(faces.begin(), faces.end());
 
     GenerateNode(o.pRootNode, faces);
@@ -74,23 +80,50 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
 
     // try out different plane options and find a reasonable split ratio (3:1)
     long bestVert = -1;
+    int bestAxis = -1;
     float ratio = 999999.9f;
+    int bestScore = 99999999;
+    int face = std::rand() % faces.size(); // random enough for this
 
-    // for (int i = 0; i < 3; i++)
-    int i = 0;
+    for (int i = 0; i < 3; i++)
     {
-        long vert = ((long*)faces.data())[i];
+        long vert = ((long*)faces.data())[face * 3 + i];
 
         // 0 for x, 1 for y, 2 for z - same type used in the ObjPlane struct
-        //for (int j = 0; j < 3; j++)
-        int j = 0;
+        for (int j = 0; j < 3; j++)
         {
-            float offset = fpVerts[vert * 3 + j];
+            float axisOffset = fpVerts[vert * 3 + j];
+			int score = 0;
 
             // sift faces to left and right based on verts being greater
             // or less than the offset
+            for (int k = 0; k < faces.size(); k++)
+            {
+                // skip the current face - where does this go?
+                if (k == face)
+                {
+                    continue;
+                }
 
-            // if ratio is closer to 1 then update bestVert and best ratio
+                // dumb for now - just take the average
+                float average = (fpVerts[faces[k].v1 * 3 + j] + fpVerts[faces[k].v2 * 3 + j] + fpVerts[faces[k].v3 * 3 + j]) / 3.0f;
+               
+                if (average <= axisOffset)
+                {
+                    score++;
+                }
+                else
+                {
+                    score--;
+                }
+            }
+            
+            if (abs(score) < bestScore)
+            {
+                bestScore = abs(score);
+                bestAxis = j;
+                bestVert = vert;
+            }
         }
     }
 
