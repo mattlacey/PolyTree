@@ -99,12 +99,6 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
             // or less than the offset
             for (int k = 0; k < faces.size(); k++)
             {
-                // skip the current face - where does this go?
-                if (k == face)
-                {
-                    continue;
-                }
-
                 // dumb for now - just take the average
                 float average = (fpVerts[faces[k].v1 * 3 + j] + fpVerts[faces[k].v2 * 3 + j] + fpVerts[faces[k].v3 * 3 + j]) / 3.0f;
                
@@ -129,6 +123,26 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
 
     // once a reasonable split is found then alloc a new node for each size,
     // wash, rinse, repeat?
+    float bestAxisOffset = fpVerts[bestVert * 3 + bestAxis];
+    for (int k = 0; k < faces.size(); k++)
+    {
+        float average = (fpVerts[faces[k].v1 * 3 + bestAxis] + fpVerts[faces[k].v2 * 3 + bestAxis] + fpVerts[faces[k].v3 * 3 + bestAxis]) / 3.0f;
+
+        if (average <= bestAxisOffset)
+        {
+            left.push_back(faces[k]);
+        }
+        else
+        {
+            right.push_back(faces[k]);
+        }
+    }
+
+    node->pLeft = (ObjNode*)malloc(sizeof(ObjNode));
+    node->pRight = (ObjNode*)malloc(sizeof(ObjNode));
+
+    GenerateNode(node->pLeft, left);
+    GenerateNode(node->pRight, right);
 }
 
 bool AtariObj::FacesIntersect(ObjFace* face1, ObjFace* face2)
