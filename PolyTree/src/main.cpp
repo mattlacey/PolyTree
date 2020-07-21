@@ -18,6 +18,7 @@
 #include "Shader.h"
 
 #define OPEN_FILE "Open File"
+#define SAVE_FILE "Save File"
 
 void fbSizeCallback(GLFWwindow* window, int width, int height)
 {
@@ -28,6 +29,28 @@ void processInput(GLFWwindow* window)
 {
     if (glfwGetKey(window, GLFW_KEY_ESCAPE) == GLFW_PRESS)
         glfwSetWindowShouldClose(window, true);
+}
+
+void imGuiObjectTree(ObjNode* pNode)
+{
+    if (pNode->pPart)
+    {
+        ImGui::Text("Face Count: %i", pNode->pPart->faceCount);
+    }
+    else
+    {
+        if (ImGui::TreeNode("L"))
+        {
+            imGuiObjectTree(pNode->pLeft);
+			ImGui::TreePop();
+        }
+
+        if (ImGui::TreeNode("R"))
+        {
+			imGuiObjectTree(pNode->pRight);
+			ImGui::TreePop();
+        }
+    }
 }
 
 int main(int argc, char** argv)
@@ -83,6 +106,7 @@ int main(int argc, char** argv)
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     bool showFileDialog = false;
+    bool showSaveFileDialog = false;
     imgui_addons::ImGuiFileBrowser fileDialog; // As a class member or globally
 
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
@@ -113,6 +137,11 @@ int main(int argc, char** argv)
                     showFileDialog = true;
                 }
 
+                if (ImGui::MenuItem("Export...", NULL, false, (obj && !showFileDialog)))
+                {
+                    showSaveFileDialog = true;
+                }
+
                 if (ImGui::MenuItem("Quit", NULL))
                 {
 					glfwSetWindowShouldClose(window, true);
@@ -127,6 +156,10 @@ int main(int argc, char** argv)
         if (showFileDialog)
         {
             ImGui::OpenPopup(OPEN_FILE);
+        }
+        else if (showSaveFileDialog)
+        {
+            ImGui::OpenPopup(SAVE_FILE);
         }
 
         if (fileDialog.showFileDialog(OPEN_FILE, imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(100, 100), ".obj,.OBJ"))
@@ -143,6 +176,16 @@ int main(int argc, char** argv)
 
             obj = new AtariObj(textBuffer);
         }
+        else if (fileDialog.showFileDialog(SAVE_FILE, imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(100, 100), ".lto,.LTO"))
+        {
+            strcpy(textBuffer, fileDialog.selected_path.c_str());
+            showSaveFileDialog = false;
+
+            if (obj)
+            {
+                obj->WriteTree(textBuffer);
+            }
+        }
 
         ImGui::Begin("Object Info", NULL);
         ImGui::Text("Current File: %s\n", textBuffer);
@@ -150,9 +193,9 @@ int main(int argc, char** argv)
         if (obj)
         {
             ImGui::Text("Vert Count: %i\nFace Count: %i\n", obj->o.vertCount, obj->o.faceCount);
+            ImGui::SliderFloat("Y Rotation", &rotSpeed, -.1f, .1f);
+            imGuiObjectTree(obj->o.pRootNode);
         }
-
-        ImGui::SliderFloat("Y Rotation", &rotSpeed, -.1f, .1f);
 
         // ImGui::Text("Shader output:\n%s", s->errorLog);
 

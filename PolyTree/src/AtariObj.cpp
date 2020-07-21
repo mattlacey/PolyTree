@@ -64,6 +64,33 @@ void AtariObj::GenerateTree()
     GenerateNode(o.pRootNode, faces);
 }
 
+void AtariObj::WriteTree(char* filename)
+{
+    FILE* f = fopen(filename, "wb+");
+
+    if (!f)
+    {
+        return;
+    }
+
+    WriteNode(f, o.pRootNode);
+
+    fclose(f);
+}
+
+void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
+{
+    if (pNode->pPart)
+    {
+        fwrite(pNode->pPart->faces, sizeof(ObjFace), pNode->pPart->faceCount, pFile);
+    }
+    else
+    {
+        WriteNode(pFile, pNode->pLeft);
+        WriteNode(pFile, pNode->pRight);
+    }
+}
+
 void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
 {
     // if no we're down to one face (later, no intersecting faces) stop
@@ -72,6 +99,8 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
         node->pPart->faces = &faces[0];
         node->pPart->faceCount = (long)faces.size();
+        node->pLeft = NULL;
+        node->pRight = NULL;
         return;
     }
 
@@ -138,8 +167,14 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
         }
     }
 
+    node->pPart = NULL;
+    node->hyperplane.distance = (fx32)(FX_ONE * bestAxisOffset);
+    node->hyperplane.orientation = bestAxis;
     node->pLeft = (ObjNode*)malloc(sizeof(ObjNode));
     node->pRight = (ObjNode*)malloc(sizeof(ObjNode));
+
+    node->pLeft->pLeft = NULL;
+    node->pRight->pRight = NULL;
 
     // if all faces have fallen on one side, then there's no way to split them so we're done
     // on this branch
