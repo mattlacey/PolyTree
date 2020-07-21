@@ -53,7 +53,7 @@ void AtariObj::SetupBuffers()
 void AtariObj::GenerateTree()
 {
     o.pRootNode = (ObjNode*)malloc(sizeof(ObjNode));
-    std::vector<ObjFace> faces(o.faceCount);
+    std::vector<ObjFace> faces;
 
     for (int i = 0; i < o.faceCount; i++)
     {
@@ -141,8 +141,20 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
     node->pLeft = (ObjNode*)malloc(sizeof(ObjNode));
     node->pRight = (ObjNode*)malloc(sizeof(ObjNode));
 
-    GenerateNode(node->pLeft, left);
-    GenerateNode(node->pRight, right);
+    // if all faces have fallen on one side, then there's no way to split them so we're done
+    // on this branch
+    if (faces.size() == left.size() || faces.size() == right.size())
+    {
+        node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
+        node->pPart->faces = (faces.size() == left.size() ? &left[0] : &right[0]);
+        node->pPart->faceCount = (long)faces.size();
+        return;
+    }
+    else
+    {
+        GenerateNode(node->pLeft, left);
+        GenerateNode(node->pRight, right);
+    }
 }
 
 bool AtariObj::FacesIntersect(ObjFace* face1, ObjFace* face2)
