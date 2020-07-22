@@ -53,15 +53,15 @@ void AtariObj::SetupBuffers()
 void AtariObj::GenerateTree()
 {
     o.pRootNode = (ObjNode*)malloc(sizeof(ObjNode));
-    std::vector<ObjFace> faces;
+    std::vector<ObjFace>* pFaces = new std::vector<ObjFace>();
 
     for (int i = 0; i < o.faceCount; i++)
     {
-        faces.push_back(o.faces[i]);
+        pFaces->push_back(o.faces[i]);
     }
-    std::random_shuffle(faces.begin(), faces.end());
+    std::random_shuffle(pFaces->begin(), pFaces->end());
 
-    GenerateNode(o.pRootNode, faces);
+    GenerateNode(o.pRootNode, pFaces);
 }
 
 void AtariObj::WriteTree(char* filename)
@@ -91,32 +91,32 @@ void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
     }
 }
 
-void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
+void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
 {
     // if no we're down to one face (later, no intersecting faces) stop
-    if (faces.size() <= 1)
+    if (pFaces->size() <= 1)
     {
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
-        node->pPart->faces = &faces[0];
-        node->pPart->faceCount = (long)faces.size();
+        node->pPart->faces = &(*pFaces)[0];
+        node->pPart->faceCount = (long)pFaces->size();
         node->pLeft = NULL;
         node->pRight = NULL;
         return;
     }
 
-    std::vector<ObjFace> left;
-    std::vector<ObjFace> right;
+    std::vector<ObjFace>* pLeftFaces = new std::vector<ObjFace>();
+    std::vector<ObjFace>* pRightFaces = new std::vector<ObjFace>();
 
     // try out different plane options and find a reasonable split ratio (3:1)
     long bestVert = -1;
     int bestAxis = -1;
     float ratio = 999999.9f;
     int bestScore = 99999999;
-    int face = std::rand() % faces.size(); // random enough for this
+    int face = std::rand() % pFaces->size(); // random enough for this
 
     for (int i = 0; i < 3; i++)
     {
-        long vert = ((long*)faces.data())[face * 3 + i];
+        long vert = ((long*)pFaces->data())[face * 3 + i];
 
         // 0 for x, 1 for y, 2 for z - same type used in the ObjPlane struct
         for (int j = 0; j < 3; j++)
@@ -126,10 +126,10 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
 
             // sift faces to left and right based on verts being greater
             // or less than the offset
-            for (int k = 0; k < faces.size(); k++)
+            for (int k = 0; k < pFaces->size(); k++)
             {
                 // dumb for now - just take the average
-                float average = (fpVerts[faces[k].v1 * 3 + j] + fpVerts[faces[k].v2 * 3 + j] + fpVerts[faces[k].v3 * 3 + j]) / 3.0f;
+                float average = (fpVerts[(*pFaces)[k].v1 * 3 + j] + fpVerts[(*pFaces)[k].v2 * 3 + j] + fpVerts[(*pFaces)[k].v3 * 3 + j]) / 3.0f;
                
                 if (average <= axisOffset)
                 {
@@ -153,17 +153,17 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
     // once a reasonable split is found then alloc a new node for each size,
     // wash, rinse, repeat?
     float bestAxisOffset = fpVerts[bestVert * 3 + bestAxis];
-    for (int k = 0; k < faces.size(); k++)
+    for (int k = 0; k < pFaces->size(); k++)
     {
-        float average = (fpVerts[faces[k].v1 * 3 + bestAxis] + fpVerts[faces[k].v2 * 3 + bestAxis] + fpVerts[faces[k].v3 * 3 + bestAxis]) / 3.0f;
+        float average = (fpVerts[(*pFaces)[k].v1 * 3 + bestAxis] + fpVerts[(*pFaces)[k].v2 * 3 + bestAxis] + fpVerts[(*pFaces)[k].v3 * 3 + bestAxis]) / 3.0f;
 
         if (average <= bestAxisOffset)
         {
-            left.push_back(faces[k]);
+            pLeftFaces->push_back((*pFaces)[k]);
         }
         else
         {
-            right.push_back(faces[k]);
+            pRightFaces->push_back((*pFaces)[k]);
         }
     }
 
@@ -178,17 +178,17 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace> faces)
 
     // if all faces have fallen on one side, then there's no way to split them so we're done
     // on this branch
-    if (faces.size() == left.size() || faces.size() == right.size())
+    if (pFaces->size() == pLeftFaces->size() || pFaces->size() == pRightFaces->size())
     {
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
-        node->pPart->faces = (faces.size() == left.size() ? &left[0] : &right[0]);
-        node->pPart->faceCount = (long)faces.size();
+        node->pPart->faces = (pFaces->size() == pLeftFaces->size() ? &(*pLeftFaces)[0] : &(*pRightFaces)[0]);
+        node->pPart->faceCount = (long)pFaces->size();
         return;
     }
     else
     {
-        GenerateNode(node->pLeft, left);
-        GenerateNode(node->pRight, right);
+        GenerateNode(node->pLeft, pLeftFaces);
+        GenerateNode(node->pRight, pRightFaces);
     }
 }
 
