@@ -73,22 +73,29 @@ void AtariObj::WriteTree(char* filename)
         return;
     }
 
-    WriteNode(f, o.pRootNode);
+    WriteNode(f, o.pRootNode, 0);
 
     fclose(f);
 }
 
-void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
+int AtariObj::WriteNode(FILE* pFile, ObjNode* pNode, int count)
 {
     if (pNode->pPart)
     {
+        unsigned char faceCount = (unsigned char)pNode->pPart->faceCount;
+        fwrite(&faceCount, sizeof(unsigned char), 1, pFile);
         fwrite(pNode->pPart->faces, sizeof(ObjFace), pNode->pPart->faceCount, pFile);
     }
     else
     {
-        WriteNode(pFile, pNode->pLeft);
-        WriteNode(pFile, pNode->pRight);
+        unsigned char marker = 0xff;
+        count = WriteNode(pFile, pNode->pLeft, count);
+        fwrite(&marker, sizeof(unsigned char), 1, pFile);
+        count++;
+        count = WriteNode(pFile, pNode->pRight, count);
     }
+
+    return count;
 }
 
 void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)

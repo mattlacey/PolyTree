@@ -21,7 +21,7 @@ public:
 private:
 	unsigned int VAO, VBO, EBO;
 	void GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces);
-	void WriteNode(FILE* pFile, ObjNode* pNode);
+	int WriteNode(FILE* pFile, ObjNode* pNode, int count);
 	void SetupBuffers();
 	bool FacesIntersect(ObjFace* face1, ObjFace* face2);
 };
