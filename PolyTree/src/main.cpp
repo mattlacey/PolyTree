@@ -105,7 +105,7 @@ int main(int argc, char** argv)
     ImGui_ImplGlfw_InitForOpenGL(window, true);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
-    bool showFileDialog = false;
+    int showFileDialog = 0;
     bool showSaveFileDialog = false;
     imgui_addons::ImGuiFileBrowser fileDialog; // As a class member or globally
 
@@ -132,9 +132,14 @@ int main(int argc, char** argv)
         {
             if (ImGui::BeginMenu("File"))
             {
-                if (ImGui::MenuItem("Open...", NULL))
+                if (ImGui::MenuItem("Open Obj...", NULL))
                 {
-                    showFileDialog = true;
+                    showFileDialog = 1;
+                }
+
+                if (ImGui::MenuItem("Open LTO...", NULL))
+                {
+                    showFileDialog = 2;
                 }
 
                 if (ImGui::MenuItem("Export...", NULL, false, (obj && !showFileDialog)))
@@ -162,12 +167,12 @@ int main(int argc, char** argv)
             ImGui::OpenPopup(SAVE_FILE);
         }
 
-        if (fileDialog.showFileDialog(OPEN_FILE, imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(100, 100), ".obj,.OBJ"))
+        if (fileDialog.showFileDialog(OPEN_FILE, imgui_addons::ImGuiFileBrowser::DialogMode::OPEN, ImVec2(100, 100), (showFileDialog == 1 ? ".obj,.OBJ" : ".lto,.LTO")))
         {
             std::cout << fileDialog.selected_fn << std::endl;      // The name of the selected file or directory in case of Select Directory dialog mode
             std::cout << fileDialog.selected_path << std::endl;    // The absolute path to the selected file
             strcpy(textBuffer, fileDialog.selected_path.c_str());
-            showFileDialog = false;
+            showFileDialog = 0;
 
             if (obj)
             {
