@@ -81,6 +81,9 @@ void AtariObj::WriteTree(char* filename)
         return;
     }
 
+    fwrite(&o.vertCount, sizeof(long), 1, f);
+    fwrite(&o.verts[0], sizeof(V3), o.vertCount, f);
+
     WriteNode(f, o.pRootNode);
 
     fclose(f);
@@ -96,8 +99,10 @@ void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
     }
     else
     {
-        unsigned long marker = 0xffffffff;
+        unsigned long marker = BRANCH_NODE;
         fwrite(&marker, sizeof(unsigned long), 1, pFile);
+
+        fwrite(&pNode->hyperplane, sizeof(BSPPlane), 1, pFile);
         WriteNode(pFile, pNode->pLeft);
         WriteNode(pFile, pNode->pRight);
     }
