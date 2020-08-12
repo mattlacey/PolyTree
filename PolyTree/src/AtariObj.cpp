@@ -75,12 +75,16 @@ void AtariObj::GenerateTree()
 void AtariObj::WriteTree(char* filename)
 {
     FILE* f = fopen(filename, "wb+");
+    char fileType[4] = "LTO";
+    unsigned char fileVersion = 1;
 
     if (!f)
     {
         return;
     }
 
+    fwrite(fileType, 1, 3, f);
+    fwrite(&fileVersion, 1, 1, f);
     fwrite(&o.vertCount, sizeof(long), 1, f);
     fwrite(&o.verts[0], sizeof(V3), o.vertCount, f);
 
