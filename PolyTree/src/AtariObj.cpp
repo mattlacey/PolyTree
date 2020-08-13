@@ -65,9 +65,11 @@ void AtariObj::GenerateTree()
     o.pRootNode = (ObjNode*)malloc(sizeof(ObjNode));
     std::vector<ObjFace>* pFaces = new std::vector<ObjFace>();
 
+    ObjFace* faces = (ObjFace*)o.indices;
+
     for (int i = 0; i < o.faceCount; i++)
     {
-        pFaces->push_back(o.faces[i]);
+        pFaces->push_back(faces[i]);
     }
     std::random_shuffle(pFaces->begin(), pFaces->end());
 
