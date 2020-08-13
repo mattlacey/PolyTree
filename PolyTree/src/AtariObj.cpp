@@ -7,6 +7,8 @@
 #include <vector>
 #include <algorithm>
 
+#include <intrin.h>
+
 AtariObj::AtariObj(char* filename)
 {
     const char* dot = strrchr(filename, '.');
@@ -77,6 +79,7 @@ void AtariObj::WriteTree(char* filename)
     FILE* f = fopen(filename, "wb+");
     char fileType[4] = "LTO";
     unsigned char fileVersion = 1;
+    unsigned long temp;
 
     if (!f)
     {
@@ -85,8 +88,19 @@ void AtariObj::WriteTree(char* filename)
 
     fwrite(fileType, 1, 3, f);
     fwrite(&fileVersion, 1, 1, f);
-    fwrite(&o.vertCount, sizeof(long), 1, f);
-    fwrite(&o.verts[0], sizeof(V3), o.vertCount, f);
+
+    temp = _byteswap_ulong(o.vertCount);
+    fwrite(&temp, sizeof(long), 1, f);
+
+    for (int i = 0; i < o.vertCount; i++)
+    {
+        temp = _byteswap_ulong(o.verts[i].x);
+		fwrite(&temp, sizeof(unsigned long), 1, f);
+        temp = _byteswap_ulong(o.verts[i].y);
+		fwrite(&temp, sizeof(unsigned long), 1, f);
+        temp = _byteswap_ulong(o.verts[i].z);
+        fwrite(&temp, sizeof(unsigned long), 1, f);
+    }
 
     WriteNode(f, o.pRootNode);
 
@@ -95,18 +109,32 @@ void AtariObj::WriteTree(char* filename)
 
 void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
 {
+    unsigned long temp;
     if (pNode->pPart)
     {
-        unsigned long faceCount = pNode->pPart->faceCount;
-        fwrite(&faceCount, sizeof(unsigned long), 1, pFile);
-        fwrite(pNode->pPart->faces, sizeof(ObjFace), pNode->pPart->faceCount, pFile);
+        temp = _byteswap_ulong(pNode->pPart->faceCount);
+        fwrite(&temp, sizeof(unsigned long), 1, pFile);
+
+        for (long i = 0; i < pNode->pPart->faceCount; i++)
+        {
+            temp = _byteswap_ulong(pNode->pPart->faces[i].v1);
+			fwrite(&temp, sizeof(unsigned long), 1, pFile);
+            temp = _byteswap_ulong(pNode->pPart->faces[i].v2);
+			fwrite(&temp, sizeof(unsigned long), 1, pFile);
+            temp = _byteswap_ulong(pNode->pPart->faces[i].v3);
+			fwrite(&temp, sizeof(unsigned long), 1, pFile);
+        }
     }
     else
     {
-        unsigned long marker = BRANCH_NODE;
-        fwrite(&marker, sizeof(unsigned long), 1, pFile);
+        temp = 0;
+        fwrite(&temp, sizeof(unsigned long), 1, pFile);
 
-        fwrite(&pNode->hyperplane, sizeof(BSPPlane), 1, pFile);
+        temp = _byteswap_ulong(pNode->hyperplane.orientation);
+        fwrite(&temp, sizeof(unsigned long), 1, pFile);
+        temp = _byteswap_ulong(pNode->hyperplane.distance);
+        fwrite(&temp, sizeof(unsigned long), 1, pFile);
+
         WriteNode(pFile, pNode->pLeft);
         WriteNode(pFile, pNode->pRight);
     }
