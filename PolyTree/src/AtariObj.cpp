@@ -144,7 +144,7 @@ void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
 
 void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
 {
-    // if no we're down to one face (later, no intersecting faces) stop
+    // if we're down to one face (later, no intersecting faces) stop
     if (pFaces->size() <= 1)
     {
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
@@ -158,17 +158,21 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     std::vector<ObjFace>* pLeftFaces = new std::vector<ObjFace>();
     std::vector<ObjFace>* pRightFaces = new std::vector<ObjFace>();
 
-    // try out different plane options and find a reasonable split ratio (3:1)
+    // try out different plane options and find a reasonable balance (left/right of around 3:1 tops)
+    // also need to try and minimise the number of polys that get split 
     long bestVert = -1;
     int bestAxis = -1;
     float ratio = 999999.9f;
     int bestScore = 99999999;
     int face = std::rand() % pFaces->size(); // random enough for this
+    int splitCount = 0;
 
+    // for each vert in the chosen face
     for (int i = 0; i < 3; i++)
     {
         long vert = ((long*)pFaces->data())[face * 3 + i];
 
+        // we test each axis as a partitioning plane
         // 0 for x, 1 for y, 2 for z - same type used in the ObjPlane struct
         for (int j = 0; j < 3; j++)
         {
@@ -179,42 +183,56 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             // or less than the offset
             for (int k = 0; k < pFaces->size(); k++)
             {
-                // dumb for now - just take the average
-                float average = (fpVerts[(*pFaces)[k].v1 * 3 + j] + fpVerts[(*pFaces)[k].v2 * 3 + j] + fpVerts[(*pFaces)[k].v3 * 3 + j]) / 3.0f;
-               
-                if (average <= axisOffset)
+                if (fpVerts[(*pFaces)[k].v1 * 3 + j] <= axisOffset
+                    && fpVerts[(*pFaces)[k].v2 * 3 + j] <= axisOffset
+                    && fpVerts[(*pFaces)[k].v3 * 3 + j] <= axisOffset)
                 {
                     score++;
                 }
-                else
+                else if (fpVerts[(*pFaces)[k].v1 * 3 + j] > axisOffset
+                    && fpVerts[(*pFaces)[k].v2 * 3 + j] > axisOffset
+                    && fpVerts[(*pFaces)[k].v3 * 3 + j] > axisOffset)
                 {
                     score--;
                 }
+                else
+                {
+                    splitCount++;
+                }
             }
+
+            int finalScore = abs(score) * abs(score) + (splitCount * splitCount);
             
-            if (abs(score) < bestScore)
+            if (finalScore < bestScore)
             {
-                bestScore = abs(score);
+                bestScore = finalScore;
                 bestAxis = j;
                 bestVert = vert;
             }
         }
     }
 
-    // once a reasonable split is found then alloc a new node for each size,
-    // wash, rinse, repeat?
+    // once the best score is found, go ahead and divide up the faces, splitting where necessary
     float bestAxisOffset = fpVerts[bestVert * 3 + bestAxis];
     for (int k = 0; k < pFaces->size(); k++)
     {
-        float average = (fpVerts[(*pFaces)[k].v1 * 3 + bestAxis] + fpVerts[(*pFaces)[k].v2 * 3 + bestAxis] + fpVerts[(*pFaces)[k].v3 * 3 + bestAxis]) / 3.0f;
-
-        if (average <= bestAxisOffset)
+        if (fpVerts[(*pFaces)[k].v1 * 3 + bestAxis] <= bestAxisOffset
+            && fpVerts[(*pFaces)[k].v2 * 3 + bestAxis] <= bestAxisOffset
+            && fpVerts[(*pFaces)[k].v3 * 3 + bestAxis] <= bestAxisOffset)
         {
             pLeftFaces->push_back((*pFaces)[k]);
         }
-        else
+        else if (fpVerts[(*pFaces)[k].v1 * 3 + bestAxis] > bestAxisOffset
+            && fpVerts[(*pFaces)[k].v2 * 3 + bestAxis] > bestAxisOffset
+            && fpVerts[(*pFaces)[k].v3 * 3 + bestAxis] > bestAxisOffset)
         {
             pRightFaces->push_back((*pFaces)[k]);
+        }
+        else
+        {
+            V3 v1 = *((V3*)&(fpVerts[(*pFaces)[k].v1 * 3]));
+            V3 v2 = *((V3*)&(fpVerts[(*pFaces)[k].v2 * 3]));
+            V3 v3 = *((V3*)&(fpVerts[(*pFaces)[k].v3 * 3]));
         }
     }
 
