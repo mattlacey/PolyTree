@@ -40,16 +40,19 @@ void AtariObj::SetupBuffers()
     glBindBuffer(GL_ARRAY_BUFFER, VBO);
 
     // Atari verts are in 16.16 fixed point format, so we need to convert them here to the correct format for OpenGL
-    fpVerts = (float*)malloc(sizeof(float) * 3 * o.vertCount);
+    fpVerts = new std::vector<fV3>();
+    fpVerts->reserve(o.vertCount);
 
     for (int i = 0; i < o.vertCount; i++)
     {
-        fpVerts[i * 3 + 0] = (o.verts[i].x / 65536.0f);
-        fpVerts[i * 3 + 1] = (o.verts[i].y / 65536.0f);
-        fpVerts[i * 3 + 2] = (o.verts[i].z / 65536.0f);
+        fV3 vert;
+        vert.x = (o.verts[i].x / 65536.0f);
+        vert.y = (o.verts[i].y / 65536.0f);
+        vert.z = (o.verts[i].z / 65536.0f);
+        fpVerts->push_back(vert);
     }
 
-    glBufferData(GL_ARRAY_BUFFER, o.vertCount * sizeof(float) * 3, fpVerts, GL_STATIC_DRAW);
+    glBufferData(GL_ARRAY_BUFFER, o.vertCount * sizeof(float) * 3, fpVerts->data()[0].v, GL_STATIC_DRAW);
 
     glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, EBO);
     glBufferData(GL_ELEMENT_ARRAY_BUFFER, o.indexCount * sizeof(long), o.indices, GL_STATIC_DRAW);
@@ -165,7 +168,8 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     float ratio = 999999.9f;
     int bestScore = 99999999;
     int face = std::rand() % pFaces->size(); // random enough for this
-    int splitCount = 0;
+
+    fV3* verts = fpVerts->data();
 
     // for each vert in the chosen face
     for (int i = 0; i < 3; i++)
@@ -176,22 +180,25 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
         // 0 for x, 1 for y, 2 for z - same type used in the ObjPlane struct
         for (int j = 0; j < 3; j++)
         {
-            float axisOffset = fpVerts[vert * 3 + j];
+            float axisOffset = verts[vert].v[j];
 			int score = 0;
+            int splitCount = 0;
 
             // sift faces to left and right based on verts being greater
             // or less than the offset
             for (int k = 0; k < pFaces->size(); k++)
             {
-                if (fpVerts[(*pFaces)[k].v1 * 3 + j] <= axisOffset
-                    && fpVerts[(*pFaces)[k].v2 * 3 + j] <= axisOffset
-                    && fpVerts[(*pFaces)[k].v3 * 3 + j] <= axisOffset)
+                ObjFace face = (*pFaces)[k];
+
+                if (verts[face.v1].v[j] <= axisOffset
+                    && verts[face.v2].v[j] <= axisOffset
+                    && verts[face.v3].v[j] <= axisOffset)
                 {
                     score++;
                 }
-                else if (fpVerts[(*pFaces)[k].v1 * 3 + j] > axisOffset
-                    && fpVerts[(*pFaces)[k].v2 * 3 + j] > axisOffset
-                    && fpVerts[(*pFaces)[k].v3 * 3 + j] > axisOffset)
+                else if (verts[face.v1].v[j] > axisOffset
+                    && verts[face.v2].v[j] > axisOffset
+                    && verts[face.v3].v[j] > axisOffset)
                 {
                     score--;
                 }
@@ -213,26 +220,29 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     }
 
     // once the best score is found, go ahead and divide up the faces, splitting where necessary
-    float bestAxisOffset = fpVerts[bestVert * 3 + bestAxis];
+    float bestAxisOffset = fpVerts->data()[bestVert].v[bestAxis];
     for (int k = 0; k < pFaces->size(); k++)
     {
-        if (fpVerts[(*pFaces)[k].v1 * 3 + bestAxis] <= bestAxisOffset
-            && fpVerts[(*pFaces)[k].v2 * 3 + bestAxis] <= bestAxisOffset
-            && fpVerts[(*pFaces)[k].v3 * 3 + bestAxis] <= bestAxisOffset)
+        ObjFace face = (*pFaces)[k];
+
+        if (verts[face.v1].v[bestAxis] <= bestAxisOffset
+            && verts[face.v2].v[bestAxis] <= bestAxisOffset
+            && verts[face.v3].v[bestAxis] <= bestAxisOffset)
         {
             pLeftFaces->push_back((*pFaces)[k]);
         }
-        else if (fpVerts[(*pFaces)[k].v1 * 3 + bestAxis] > bestAxisOffset
-            && fpVerts[(*pFaces)[k].v2 * 3 + bestAxis] > bestAxisOffset
-            && fpVerts[(*pFaces)[k].v3 * 3 + bestAxis] > bestAxisOffset)
+        else if (verts[face.v1].v[bestAxis] > bestAxisOffset
+            && verts[face.v2].v[bestAxis] > bestAxisOffset
+            && verts[face.v3].v[bestAxis] > bestAxisOffset)
         {
             pRightFaces->push_back((*pFaces)[k]);
         }
         else
         {
-            V3 v1 = *((V3*)&(fpVerts[(*pFaces)[k].v1 * 3]));
-            V3 v2 = *((V3*)&(fpVerts[(*pFaces)[k].v2 * 3]));
-            V3 v3 = *((V3*)&(fpVerts[(*pFaces)[k].v3 * 3]));
+            // grab the 3 verts
+            // work out which side each is on
+            // find intersections
+            // record the new faces and push the new verts into the vector
         }
     }
 
@@ -259,6 +269,11 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
         GenerateNode(node->pLeft, pLeftFaces);
         GenerateNode(node->pRight, pRightFaces);
     }
+}
+
+void getIntersection(float *v1, float *v2, int axis)
+{
+    return;
 }
 
 bool AtariObj::FacesIntersect(ObjFace* face1, ObjFace* face2)

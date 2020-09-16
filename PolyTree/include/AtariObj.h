@@ -7,11 +7,25 @@ extern "C"
 	#include "Obj.h"
 }
 
+typedef struct fV3
+{
+	union
+	{
+		float v[3];
+		struct
+		{
+			float x;
+			float y;
+			float z;
+		};
+	};
+} fV3;
+
 class AtariObj
 {
 public:
 	Obj o;
-	float* fpVerts;
+	std::vector<fV3>* fpVerts;
 	
 	AtariObj(char* filename);
 	void Render();
