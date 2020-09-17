@@ -185,7 +185,8 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             int splitCount = 0;
 
             // sift faces to left and right based on verts being greater
-            // or less than the offset
+            // or less than the offset - on the line doesn't matter either
+            // way hence both <= and >=
             for (int k = 0; k < pFaces->size(); k++)
             {
                 ObjFace face = (*pFaces)[k];
@@ -196,9 +197,9 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 {
                     score++;
                 }
-                else if (verts[face.v1].v[j] > axisOffset
-                    && verts[face.v2].v[j] > axisOffset
-                    && verts[face.v3].v[j] > axisOffset)
+                else if (verts[face.v1].v[j] >= axisOffset
+                    && verts[face.v2].v[j] >= axisOffset
+                    && verts[face.v3].v[j] >= axisOffset)
                 {
                     score--;
                 }
@@ -231,9 +232,9 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
         {
             pLeftFaces->push_back((*pFaces)[k]);
         }
-        else if (verts[face.v1].v[bestAxis] > bestAxisOffset
-            && verts[face.v2].v[bestAxis] > bestAxisOffset
-            && verts[face.v3].v[bestAxis] > bestAxisOffset)
+        else if (verts[face.v1].v[bestAxis] >= bestAxisOffset
+            && verts[face.v2].v[bestAxis] >= bestAxisOffset
+            && verts[face.v3].v[bestAxis] >= bestAxisOffset)
         {
             pRightFaces->push_back((*pFaces)[k]);
         }
