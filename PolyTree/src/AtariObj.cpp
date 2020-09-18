@@ -244,6 +244,47 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             // work out which side each is on
             // find intersections
             // record the new faces and push the new verts into the vector
+            fV3 faceVerts[3];
+            
+            faceVerts[0] = verts[face.v1];
+            faceVerts[1] = verts[face.v2];
+            faceVerts[2] = verts[face.v3];
+
+            // faces are wound 1, 2, 3
+            // work out where the cut is and calculate new faces accordingly
+
+            if (faceVerts[0].v[bestAxis] <= bestAxisOffset)
+            {
+                if (faceVerts[1].v[bestAxis] <= bestAxisOffset)
+                {
+                    // 2 is on the same side as 1
+                }
+                else if(faceVerts[2].v[bestAxis] <= bestAxisOffset)
+                {
+                    // 3 is on the same side as 1
+                }
+                else
+                {
+                    // 2 & 3 are already both on the other side, job done
+                }
+            }
+            else
+            {
+
+                if (faceVerts[1].v[bestAxis] >= bestAxisOffset)
+                {
+                    // 2 is on the same side as 1
+
+                }
+                else if(faceVerts[2].v[bestAxis] >= bestAxisOffset)
+                {
+                    // 3 is on the same side as 1
+                }
+                else
+                {
+                    // 2 & 3 are already on the same side
+                }
+            }
         }
     }
 
@@ -272,8 +313,9 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     }
 }
 
-void getIntersection(float *v1, float *v2, int axis)
+void getIntersection(fV3 v1, fV3 v2, int axis)
 {
+
     return;
 }
 
