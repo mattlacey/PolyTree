@@ -245,46 +245,109 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             // find intersections
             // record the new faces and push the new verts into the vector
             fV3 faceVerts[3];
+            fV3 p, q;
+            int i0 = 0, i1 = 1, i2 = 2;
             
-            faceVerts[0] = verts[face.v1];
-            faceVerts[1] = verts[face.v2];
-            faceVerts[2] = verts[face.v3];
+            faceVerts[i0] = verts[face.v1];
+            faceVerts[i1] = verts[face.v2];
+            faceVerts[i2] = verts[face.v3];
 
-            // faces are wound 1, 2, 3
-            // work out where the cut is and calculate new faces accordingly
+            // faces are wound 0, 1, 2, we'll set up vert 0 to be one side
+            // of the device, and 1 and 2 the other, we 'rotate' them to
+            // get to that setup so that we're not screwing with the winding
+            // then work out where the cut is and calculate new faces accordingly
+            // p will be the point between 0 & 1, q will be the point between 0 & 2
 
             if (faceVerts[0].v[bestAxis] <= bestAxisOffset)
             {
                 if (faceVerts[1].v[bestAxis] <= bestAxisOffset)
                 {
-                    // 2 is on the same side as 1
+                    // 1 is on the same side as 0, 'rotate' opposite to winding
+                    i0 = 1;
+                    i1 = 2;
+                    i2 = 0;
+                 
                 }
                 else if(faceVerts[2].v[bestAxis] <= bestAxisOffset)
                 {
-                    // 3 is on the same side as 1
-                }
-                else
-                {
-                    // 2 & 3 are already both on the other side, job done
+                    // 2 is on the same side as 0, 'rotate' with winding
+                    i0 = 2;
+                    i1 = 0;
+                    i2 = 1;
                 }
             }
             else
             {
-
                 if (faceVerts[1].v[bestAxis] >= bestAxisOffset)
                 {
-                    // 2 is on the same side as 1
+                    // 1 is on the same side as 0
+                    i0 = 1;
+                    i1 = 2;
+                    i2 = 0;
 
                 }
                 else if(faceVerts[2].v[bestAxis] >= bestAxisOffset)
                 {
-                    // 3 is on the same side as 1
-                }
-                else
-                {
-                    // 2 & 3 are already on the same side
+                    // 2 is on the same side as 0
+                    i0 = 2;
+                    i1 = 0;
+                    i2 = 1;
                 }
             }
+
+            float dp = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i1].v[bestAxis] - faceVerts[i0].v[bestAxis]);
+            float dq = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i2].v[bestAxis] - faceVerts[i0].v[bestAxis]);
+
+            p.x = faceVerts[i0].x + dp * (faceVerts[i1].x - faceVerts[i0].x);
+            p.y = faceVerts[i0].y + dp * (faceVerts[i1].y - faceVerts[i0].y);
+            p.z = faceVerts[i0].z + dp * (faceVerts[i1].z - faceVerts[i0].z);
+
+            q.x = faceVerts[i0].x + dq * (faceVerts[i2].x - faceVerts[i0].x);
+            q.y = faceVerts[i0].y + dq * (faceVerts[i2].y - faceVerts[i0].y);
+            q.z = faceVerts[i0].z + dq * (faceVerts[i2].z - faceVerts[i0].z);
+
+            // new tris are 0pq, p12, p2q - push the verts verts so that we have
+            // indices for them and then we can push faces onto the appropriate side
+            fpVerts->push_back(p);
+            fpVerts->push_back(q);
+
+            int ip = fpVerts->size() - 2;
+            int iq = ip + 1;
+
+            if (faceVerts[0].v[bestAxis] <= bestAxisOffset)
+            {
+                face.v1 = i0;
+                face.v2 = ip;
+                face.v3 = iq;
+                pLeftFaces->push_back(face);
+
+                face.v1 = ip;
+                face.v2 = i1;
+                face.v3 = i2;
+                pRightFaces->push_back(face);
+
+                face.v2 = i2;
+                face.v3 = iq;
+                pRightFaces->push_back(face);
+            }
+            else
+            {
+
+                face.v1 = i0;
+                face.v2 = ip;
+                face.v3 = iq;
+                pRightFaces->push_back(face);
+
+                face.v1 = ip;
+                face.v2 = i1;
+                face.v3 = i2;
+                pLeftFaces->push_back(face);
+
+                face.v2 = i2;
+                face.v3 = iq;
+                pLeftFaces->push_back(face);
+            }
+
         }
     }
 
