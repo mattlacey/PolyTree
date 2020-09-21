@@ -209,7 +209,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 }
             }
 
-            int finalScore = abs(score) * abs(score) + (splitCount * splitCount);
+            int finalScore = 2 * (abs(score) * abs(score)) + (splitCount * splitCount);
             
             if (finalScore < bestScore)
             {
@@ -245,9 +245,14 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             // find intersections
             // record the new faces and push the new verts into the vector
             fV3 faceVerts[3];
+            int faceIndices[3];
             fV3 p, q;
             int i0 = 0, i1 = 1, i2 = 2;
-            
+           
+            faceIndices[i0] = face.v1;
+            faceIndices[i1] = face.v2;
+            faceIndices[i2] = face.v3;
+
             faceVerts[i0] = verts[face.v1];
             faceVerts[i1] = verts[face.v2];
             faceVerts[i2] = verts[face.v3];
@@ -314,40 +319,41 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             int ip = fpVerts->size() - 2;
             int iq = ip + 1;
 
+            // optimise this for the case where a poly is split perfectly into two triangles
+
             if (faceVerts[0].v[bestAxis] <= bestAxisOffset)
             {
-                face.v1 = i0;
+                face.v1 = faceIndices[i0];
                 face.v2 = ip;
                 face.v3 = iq;
                 pLeftFaces->push_back(face);
 
                 face.v1 = ip;
-                face.v2 = i1;
-                face.v3 = i2;
+                face.v2 = faceIndices[i1];
+                face.v3 = faceIndices[i2];
                 pRightFaces->push_back(face);
 
-                face.v2 = i2;
+                face.v2 = faceIndices[i2];
                 face.v3 = iq;
                 pRightFaces->push_back(face);
             }
             else
             {
 
-                face.v1 = i0;
+                face.v1 = faceIndices[i0];
                 face.v2 = ip;
                 face.v3 = iq;
                 pRightFaces->push_back(face);
 
                 face.v1 = ip;
-                face.v2 = i1;
-                face.v3 = i2;
+                face.v2 = faceIndices[i1];
+                face.v3 = faceIndices[i2];
                 pLeftFaces->push_back(face);
 
-                face.v2 = i2;
+                face.v2 = faceIndices[i2];
                 face.v3 = iq;
                 pLeftFaces->push_back(face);
             }
-
         }
     }
 
@@ -360,9 +366,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     node->pLeft->pLeft = NULL;
     node->pRight->pRight = NULL;
 
-    // if all faces have fallen on one side, then there's no way to split them so we're done
-    // on this branch
-    if (pFaces->size() == pLeftFaces->size() || pFaces->size() == pRightFaces->size())
+    if(pLeftFaces->size() + pRightFaces->size() == 1)
     {
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
         node->pPart->faces = (pFaces->size() == pLeftFaces->size() ? &(*pLeftFaces)[0] : &(*pRightFaces)[0]);
