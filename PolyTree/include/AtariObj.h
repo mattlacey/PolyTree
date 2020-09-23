@@ -37,5 +37,12 @@ private:
 	void GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces);
 	void WriteNode(FILE* pFile, ObjNode* pNode);
 	void SetupBuffers();
-	bool FacesIntersect(ObjFace* face1, ObjFace* face2);
+	bool IsConvex(std::vector<ObjFace> polySoup);
+	fV3 GetFaceAverage(ObjFace f);
+	fV3 GetFaceNormal(ObjFace f);
+	float Dot(fV3 v1, fV3 v2);
+	fV3 Cross(fV3 v1, fV3 v2);
+	fV3 Sub(fV3 v1, fV3 v2);
+	float Length(fV3 v);
+	fV3 Normalize(fV3 v);
 };

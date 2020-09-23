@@ -6,11 +6,13 @@
 #include <stdlib.h>
 #include <vector>
 #include <algorithm>
+#include <math.h>
 
 #include <intrin.h>
 
 AtariObj::AtariObj(char* filename)
 {
+    VAO = VBO = EBO = -1;
     const char* dot = strrchr(filename, '.');
     if (!dot || dot == filename || !_strcmpi(dot, ".obj"))
     {
@@ -148,7 +150,9 @@ void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
 void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
 {
     // if we're down to one face (later, no intersecting faces) stop
-    if (pFaces->size() <= 1)
+    // and before we try and split the remaining faces, need to test
+    // to see if we've got a convex mesh or not, if so we can stop
+    if (pFaces->size() <= 1 || IsConvex(*pFaces))
     {
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
         node->pPart->faces = &(*pFaces)[0];
@@ -160,6 +164,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
 
     std::vector<ObjFace>* pLeftFaces = new std::vector<ObjFace>();
     std::vector<ObjFace>* pRightFaces = new std::vector<ObjFace>();
+
 
     // try out different plane options and find a reasonable balance (left/right of around 3:1 tops)
     // also need to try and minimise the number of polys that get split 
@@ -303,6 +308,8 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             float dp = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i1].v[bestAxis] - faceVerts[i0].v[bestAxis]);
             float dq = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i2].v[bestAxis] - faceVerts[i0].v[bestAxis]);
 
+            // if either dp or dq are 1 then we've got a special case scenario where we'll only have two triangles after splitting
+
             p.x = faceVerts[i0].x + dp * (faceVerts[i1].x - faceVerts[i0].x);
             p.y = faceVerts[i0].y + dp * (faceVerts[i1].y - faceVerts[i0].y);
             p.z = faceVerts[i0].z + dp * (faceVerts[i1].z - faceVerts[i0].z);
@@ -316,8 +323,8 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             fpVerts->push_back(p);
             fpVerts->push_back(q);
 
-            int ip = fpVerts->size() - 2;
-            int iq = ip + 1;
+            int ip = (int)fpVerts->size() - 2;
+            int iq = (int)ip + 1;
 
             // optimise this for the case where a poly is split perfectly into two triangles
 
@@ -366,29 +373,112 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     node->pLeft->pLeft = NULL;
     node->pRight->pRight = NULL;
 
-    if(pLeftFaces->size() + pRightFaces->size() == 1)
-    {
-        node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
-        node->pPart->faces = (pFaces->size() == pLeftFaces->size() ? &(*pLeftFaces)[0] : &(*pRightFaces)[0]);
-        node->pPart->faceCount = (long)pFaces->size();
-        return;
-    }
-    else
-    {
-        GenerateNode(node->pLeft, pLeftFaces);
-        GenerateNode(node->pRight, pRightFaces);
-    }
+	GenerateNode(node->pLeft, pLeftFaces);
+	GenerateNode(node->pRight, pRightFaces);
 }
 
-void getIntersection(fV3 v1, fV3 v2, int axis)
+bool AtariObj::IsConvex(std::vector<ObjFace> polySoup)
 {
+    /*
+        For each poly, check the verts of all the others, if they're all behind it, i.e. the dot
+        product from the poly average to the verts is < 0,  then we're convex and there should
+        be no rendering issues involved
+    */
+    // iterate foo: inserting into bar
+    for (std::vector<ObjFace>::size_type i = 0; i < polySoup.size(); i++)
+    {
+        fV3 faceAvg = GetFaceAverage(polySoup[i]);
+        fV3 faceNormal = GetFaceNormal(polySoup[i]);
 
-    return;
+        for (std::vector<ObjFace>::size_type j = 0; j < polySoup.size(); j++)
+        {
+            if (i == j)
+            {
+                continue;
+            }
+
+            // could loop using a pointer but using named components will be more robust
+            fV3 v;
+
+            v = fpVerts->at(polySoup[j].v1);
+            if (Dot(Normalize(Sub(v, faceAvg)), faceNormal) > 0.01f) return false;
+
+            v = fpVerts->at(polySoup[j].v2);
+            if (Dot(Normalize(Sub(v, faceAvg)), faceNormal) > 0.01f) return false;
+
+            v = fpVerts->at(polySoup[j].v3);
+            if (Dot(Normalize(Sub(v, faceAvg)), faceNormal) > 0.01f) return false;
+           
+        }
+    }
+
+    return true;
 }
 
-bool AtariObj::FacesIntersect(ObjFace* face1, ObjFace* face2)
+fV3 AtariObj::GetFaceAverage(ObjFace f)
 {
-    return false;
+    fV3 avg;
+    fV3 v1 = fpVerts->at(f.v1);
+    fV3 v2 = fpVerts->at(f.v2);
+    fV3 v3 = fpVerts->at(f.v3);
+
+    avg.x = (v1.x + v2.x + v3.x) / 3.0f;
+    avg.y = (v1.y + v2.y + v3.y) / 3.0f;
+    avg.z = (v1.z + v2.z + v3.z) / 3.0f;
+
+    return avg;
+}
+
+fV3 AtariObj::GetFaceNormal(ObjFace f)
+{
+    fV3 v1 = fpVerts->at(f.v1);
+    fV3 v2 = fpVerts->at(f.v2);
+    fV3 v3 = fpVerts->at(f.v3);
+
+    return Cross(Normalize(Sub(v1, v2)), Normalize(Sub(v3, v2)));
+}
+
+float AtariObj::Dot(fV3 v1, fV3 v2)
+{
+    return v1.x * v2.x + v1.y * v2.y + v1.z * v2.z;
+}
+
+fV3 AtariObj::Cross(fV3 v1, fV3 v2)
+{
+    fV3 cp;
+
+    cp.x = v1.y * v2.z - v1.z * v2.y;
+    cp.y = v1.z * v2.x - v1.x * v2.z;
+    cp.z = v1.x * v2.y - v1.y * v2.x;
+
+    return Normalize(cp);
+}
+
+fV3 AtariObj::Sub(fV3 v1, fV3 v2)
+{
+    fV3 result;
+
+    result.x = v1.x - v2.x;
+    result.y = v1.y - v2.y;
+    result.z = v1.z - v2.z;
+
+    return result;
+}
+
+float AtariObj::Length(fV3 v)
+{
+    return sqrt(v.x * v.x + v.y * v.y + v.z * v.z);
+}
+
+fV3 AtariObj::Normalize(fV3 v)
+{
+    float len = Length(v);
+
+    v.x /= len;
+    v.y /= len;
+    v.z /= len;
+
+    return v;
 }
 
 void AtariObj::Render()
