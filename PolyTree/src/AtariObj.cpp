@@ -367,14 +367,28 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     node->pPart = NULL;
     node->hyperplane.distance = (fx32)(FX_ONE * bestAxisOffset);
     node->hyperplane.orientation = bestAxis;
-    node->pLeft = (ObjNode*)malloc(sizeof(ObjNode));
-    node->pRight = (ObjNode*)malloc(sizeof(ObjNode));
 
-    node->pLeft->pLeft = NULL;
-    node->pRight->pRight = NULL;
+    if (pLeftFaces->size())
+    {
+        node->pLeft = (ObjNode*)malloc(sizeof(ObjNode));
+        node->pLeft->pLeft = NULL;
+        GenerateNode(node->pLeft, pLeftFaces);
+    }
+    else
+    {
+        node->pLeft = NULL;
+    }
 
-	GenerateNode(node->pLeft, pLeftFaces);
-	GenerateNode(node->pRight, pRightFaces);
+    if (pRightFaces->size())
+    {
+        node->pRight = (ObjNode*)malloc(sizeof(ObjNode));
+        node->pRight->pRight = NULL;
+        GenerateNode(node->pRight, pRightFaces);
+    }
+    else
+    {
+        node->pRight = NULL;
+    }
 }
 
 bool AtariObj::IsConvex(std::vector<ObjFace> polySoup)
@@ -398,16 +412,30 @@ bool AtariObj::IsConvex(std::vector<ObjFace> polySoup)
             }
 
             // could loop using a pointer but using named components will be more robust
-            fV3 v;
+            fV3 v, v2, v3;
+            float dp;
 
             v = fpVerts->at(polySoup[j].v1);
-            if (Dot(Normalize(Sub(v, faceAvg)), faceNormal) > 0.01f) return false;
+
+            v2 = Sub(v, faceAvg);
+            v3 = Normalize(v2);
+            dp = Dot(v3, faceNormal);
+            if (dp > 0.01f)
+                return false;
 
             v = fpVerts->at(polySoup[j].v2);
-            if (Dot(Normalize(Sub(v, faceAvg)), faceNormal) > 0.01f) return false;
+            v2 = Sub(v, faceAvg);
+            v3 = Normalize(v2);
+            dp = Dot(v3, faceNormal);
+            if (dp > 0.01f)
+                return false;
 
             v = fpVerts->at(polySoup[j].v3);
-            if (Dot(Normalize(Sub(v, faceAvg)), faceNormal) > 0.01f) return false;
+            v2 = Sub(v, faceAvg);
+            v3 = Normalize(v2);
+            dp = Dot(v3, faceNormal);
+            if (dp > 0.01f)
+                return false;
            
         }
     }
@@ -435,7 +463,7 @@ fV3 AtariObj::GetFaceNormal(ObjFace f)
     fV3 v2 = fpVerts->at(f.v2);
     fV3 v3 = fpVerts->at(f.v3);
 
-    return Cross(Normalize(Sub(v1, v2)), Normalize(Sub(v3, v2)));
+    return Cross(Normalize(Sub(v2, v1)), Normalize(Sub(v3, v1)));
 }
 
 float AtariObj::Dot(fV3 v1, fV3 v2)
