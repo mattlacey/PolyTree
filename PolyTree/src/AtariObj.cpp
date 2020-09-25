@@ -96,16 +96,18 @@ void AtariObj::WriteTree(char* filename)
     fwrite(fileType, 1, 3, f);
     fwrite(&fileVersion, 1, 1, f);
 
-    temp = _byteswap_ulong(o.vertCount);
+    temp = _byteswap_ulong(fpVerts->size());
     fwrite(&temp, sizeof(long), 1, f);
 
-    for (int i = 0; i < o.vertCount; i++)
+    for (unsigned long i = 0; i < fpVerts->size(); i++)
     {
-        temp = _byteswap_ulong(o.verts[i].x);
+        fV3 v = fpVerts->at(i);
+
+        temp = _byteswap_ulong((unsigned long)(65536 * v.x));
 		fwrite(&temp, sizeof(unsigned long), 1, f);
-        temp = _byteswap_ulong(o.verts[i].y);
+        temp = _byteswap_ulong((unsigned long)(65536 * v.y));
 		fwrite(&temp, sizeof(unsigned long), 1, f);
-        temp = _byteswap_ulong(o.verts[i].z);
+        temp = _byteswap_ulong((unsigned long)(65536 * v.z));
         fwrite(&temp, sizeof(unsigned long), 1, f);
     }
 
@@ -214,7 +216,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 }
             }
 
-            int finalScore = 2 * (abs(score) * abs(score)) + (splitCount * splitCount);
+            int finalScore = 1 * (abs(score) * abs(score)) + (splitCount * splitCount);
             
             if (finalScore < bestScore)
             {
