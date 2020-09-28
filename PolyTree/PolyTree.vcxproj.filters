@@ -140,6 +140,15 @@
     <None Include="objects\QUAD.OBJ">
       <Filter>Data</Filter>
     </None>
+    <None Include="objects\INTTRI.OBJ">
+      <Filter>Data</Filter>
+    </None>
+    <None Include="notes.md">
+      <Filter>Source Files</Filter>
+    </None>
+    <None Include="objects\Debug.OBJ">
+      <Filter>Data</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="frag.glsl">

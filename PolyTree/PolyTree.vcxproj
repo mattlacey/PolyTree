@@ -183,6 +183,7 @@
       <FileType>Document</FileType>
     </CopyFileToFolders>
     <None Include="..\README.md" />
+    <None Include="notes.md" />
     <None Include="objects\ACE.OBJ">
       <FileType>Document</FileType>
     </None>
@@ -199,6 +200,16 @@
   </ItemGroup>
   <ItemGroup>
     <None Include="objects\QUAD.OBJ">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="objects\INTTRI.OBJ">
+      <FileType>Document</FileType>
+    </None>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="objects\Debug.OBJ">
       <FileType>Document</FileType>
     </None>
   </ItemGroup>

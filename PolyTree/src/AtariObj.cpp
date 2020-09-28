@@ -154,7 +154,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     // if we're down to one face (later, no intersecting faces) stop
     // and before we try and split the remaining faces, need to test
     // to see if we've got a convex mesh or not, if so we can stop
-    if (pFaces->size() <= 1 || IsConvex(*pFaces))
+    if (pFaces->size() <= 1 || IsConvex(*pFaces, 0.1f))
     {
         node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
         node->pPart->faces = &(*pFaces)[0];
@@ -175,6 +175,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     float ratio = 999999.9f;
     int bestScore = 99999999;
     int face = std::rand() % pFaces->size(); // random enough for this
+    float fudge = 0.0f;
 
     fV3* verts = fpVerts->data();
 
@@ -198,15 +199,15 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             {
                 ObjFace face = (*pFaces)[k];
 
-                if (verts[face.v1].v[j] <= axisOffset
-                    && verts[face.v2].v[j] <= axisOffset
-                    && verts[face.v3].v[j] <= axisOffset)
+                if (verts[face.v1].v[j] <= axisOffset + fudge
+                    && verts[face.v2].v[j] <= axisOffset + fudge
+                    && verts[face.v3].v[j] <= axisOffset + fudge)
                 {
                     score++;
                 }
-                else if (verts[face.v1].v[j] >= axisOffset
-                    && verts[face.v2].v[j] >= axisOffset
-                    && verts[face.v3].v[j] >= axisOffset)
+                else if (verts[face.v1].v[j] >= axisOffset - fudge
+                    && verts[face.v2].v[j] >= axisOffset - fudge
+                    && verts[face.v3].v[j] >= axisOffset - fudge)
                 {
                     score--;
                 }
@@ -233,15 +234,15 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     {
         ObjFace face = (*pFaces)[k];
 
-        if (verts[face.v1].v[bestAxis] <= bestAxisOffset
-            && verts[face.v2].v[bestAxis] <= bestAxisOffset
-            && verts[face.v3].v[bestAxis] <= bestAxisOffset)
+        if (verts[face.v1].v[bestAxis] <= bestAxisOffset + fudge
+            && verts[face.v2].v[bestAxis] <= bestAxisOffset + fudge
+            && verts[face.v3].v[bestAxis] <= bestAxisOffset + fudge)
         {
             pLeftFaces->push_back((*pFaces)[k]);
         }
-        else if (verts[face.v1].v[bestAxis] >= bestAxisOffset
-            && verts[face.v2].v[bestAxis] >= bestAxisOffset
-            && verts[face.v3].v[bestAxis] >= bestAxisOffset)
+        else if (verts[face.v1].v[bestAxis] >= bestAxisOffset - fudge
+            && verts[face.v2].v[bestAxis] >= bestAxisOffset - fudge
+            && verts[face.v3].v[bestAxis] >= bestAxisOffset - fudge)
         {
             pRightFaces->push_back((*pFaces)[k]);
         }
@@ -320,55 +321,82 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             q.y = faceVerts[i0].y + dq * (faceVerts[i2].y - faceVerts[i0].y);
             q.z = faceVerts[i0].z + dq * (faceVerts[i2].z - faceVerts[i0].z);
 
-            // new tris are 0pq, p12, p2q - push the verts verts so that we have
-            // indices for them and then we can push faces onto the appropriate side
-            fpVerts->push_back(p);
-            fpVerts->push_back(q);
+            int ip = -1;
+            int iq = -1;
 
-            int ip = (int)fpVerts->size() - 2;
-            int iq = (int)ip + 1;
+            // new tris are 0pq, p12, p2q - first check to see if any existing verts
+            // match, if so just use those indices, otherwise push on the back
+            for (int i = 0; i < fpVerts->size(); i++)
+            {
+                if (verts[i].x == p.x && verts[i].y == p.y && verts[i].z == p.z)
+                {
+                    ip = i;
+                    break;
+                }
+            }
 
-            // optimise this for the case where a poly is split perfectly into two triangles
+            for (int i = 0; i < fpVerts->size(); i++)
+            {
+                if (verts[i].x == q.x && verts[i].y == q.y && verts[i].z == q.z)
+                {
+                    iq = i;
+                    break;
+                }
+            }
 
-            if (faceVerts[0].v[bestAxis] <= bestAxisOffset)
+            if (ip == -1)
+            {
+                fpVerts->push_back(p);
+                ip = (int)fpVerts->size() - 1;
+            }
+
+            if (iq == -1)
+            {
+                fpVerts->push_back(q);
+                iq = (int)fpVerts->size() - 1;
+            }
+
+            std::vector<ObjFace>* side1 = pLeftFaces;
+            std::vector<ObjFace>* side2 = pRightFaces;
+
+            if (faceVerts[0].v[bestAxis] > bestAxisOffset)
+            {
+                side1 = pRightFaces;
+                side2 = pLeftFaces;
+            }
+
+            if (dp > 0.0f && dq >= 0.0f)
             {
                 face.v1 = faceIndices[i0];
                 face.v2 = ip;
                 face.v3 = iq;
-                pLeftFaces->push_back(face);
-
-                face.v1 = ip;
-                face.v2 = faceIndices[i1];
-                face.v3 = faceIndices[i2];
-                pRightFaces->push_back(face);
-
-                face.v2 = faceIndices[i2];
-                face.v3 = iq;
-                pRightFaces->push_back(face);
+                side1->push_back(face);
             }
-            else
-            {
 
-                face.v1 = faceIndices[i0];
-                face.v2 = ip;
-                face.v3 = iq;
-                pRightFaces->push_back(face);
+			// do we need some fudge here?
+			if (dp == 1.0f)
+			{
+				face.v1 = ip;
+				face.v2 = faceIndices[i1];
+				face.v3 = faceIndices[i2];
+				side2->push_back(face);
+			}
 
-                face.v1 = ip;
-                face.v2 = faceIndices[i1];
-                face.v3 = faceIndices[i2];
-                pLeftFaces->push_back(face);
-
-                face.v2 = faceIndices[i2];
-                face.v3 = iq;
-                pLeftFaces->push_back(face);
-            }
+			if (dq == 1.0f)
+			{
+				face.v2 = faceIndices[i2];
+				face.v3 = iq;
+				side2->push_back(face);
+			}
         }
     }
 
     node->pPart = NULL;
     node->hyperplane.distance = (fx32)(FX_ONE * bestAxisOffset);
     node->hyperplane.orientation = bestAxis;
+
+    // if everything is on one side, and we've tried multiple faces, then we're probably just SOL
+    // and should kick out a leaf 
 
     if (pLeftFaces->size())
     {
@@ -393,13 +421,14 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     }
 }
 
-bool AtariObj::IsConvex(std::vector<ObjFace> polySoup)
+bool AtariObj::IsConvex(std::vector<ObjFace> polySoup, float fudge = 0.0f)
 {
     /*
         For each poly, check the verts of all the others, if they're all behind it, i.e. the dot
         product from the poly average to the verts is < 0,  then we're convex and there should
         be no rendering issues involved
     */
+
     // iterate foo: inserting into bar
     for (std::vector<ObjFace>::size_type i = 0; i < polySoup.size(); i++)
     {
@@ -422,21 +451,21 @@ bool AtariObj::IsConvex(std::vector<ObjFace> polySoup)
             v2 = Sub(v, faceAvg);
             v3 = Normalize(v2);
             dp = Dot(v3, faceNormal);
-            if (dp > 0.01f)
+            if (dp > fudge)
                 return false;
 
             v = fpVerts->at(polySoup[j].v2);
             v2 = Sub(v, faceAvg);
             v3 = Normalize(v2);
             dp = Dot(v3, faceNormal);
-            if (dp > 0.01f)
+            if (dp > fudge)
                 return false;
 
             v = fpVerts->at(polySoup[j].v3);
             v2 = Sub(v, faceAvg);
             v3 = Normalize(v2);
             dp = Dot(v3, faceNormal);
-            if (dp > 0.01f)
+            if (dp > fudge)
                 return false;
            
         }

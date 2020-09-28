@@ -197,7 +197,10 @@ int main(int argc, char** argv)
 
         if (obj)
         {
+            ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "Obj Stats:");
             ImGui::Text("Vert Count: %i\nFace Count: %i\n", obj->o.vertCount, obj->o.faceCount);
+            ImGui::TextColored(ImVec4(0.8f, 0.9f, 1.0f, 1.0f), "BSP Stats:");
+            ImGui::Text("Vert Count: %i\nFace Count: %i\n", obj->fpVerts->size(), 999);
             ImGui::SliderFloat("Y Rotation", &rotSpeed, -.1f, .1f);
             imGuiObjectTree(obj->o.pRootNode);
         }

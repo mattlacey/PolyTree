@@ -37,7 +37,7 @@ private:
 	void GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces);
 	void WriteNode(FILE* pFile, ObjNode* pNode);
 	void SetupBuffers();
-	bool IsConvex(std::vector<ObjFace> polySoup);
+	bool IsConvex(std::vector<ObjFace> polySoup, float fudge);
 	fV3 GetFaceAverage(ObjFace f);
 	fV3 GetFaceNormal(ObjFace f);
 	float Dot(fV3 v1, fV3 v2);
