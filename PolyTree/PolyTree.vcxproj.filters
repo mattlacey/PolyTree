@@ -149,6 +149,9 @@
     <None Include="objects\Debug.OBJ">
       <Filter>Data</Filter>
     </None>
+    <None Include="objects\Debug2.OBJ">
+      <Filter>Data</Filter>
+    </None>
   </ItemGroup>
   <ItemGroup>
     <CopyFileToFolders Include="frag.glsl">

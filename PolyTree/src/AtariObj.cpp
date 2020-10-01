@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <vector>
+#include <set>
 #include <algorithm>
 #include <math.h>
 
@@ -17,9 +18,9 @@ AtariObj::AtariObj(char* filename)
     if (!dot || dot == filename || !_strcmpi(dot, ".obj"))
     {
         o = loadObj(filename);
-		fpVerts = NULL;
-		SetupBuffers();
-		GenerateTree();
+        fpVerts = NULL;
+        SetupBuffers();
+        GenerateTree();
     }
     else
     {
@@ -104,9 +105,9 @@ void AtariObj::WriteTree(char* filename)
         fV3 v = fpVerts->at(i);
 
         temp = _byteswap_ulong((unsigned long)(65536 * v.x));
-		fwrite(&temp, sizeof(unsigned long), 1, f);
+        fwrite(&temp, sizeof(unsigned long), 1, f);
         temp = _byteswap_ulong((unsigned long)(65536 * v.y));
-		fwrite(&temp, sizeof(unsigned long), 1, f);
+        fwrite(&temp, sizeof(unsigned long), 1, f);
         temp = _byteswap_ulong((unsigned long)(65536 * v.z));
         fwrite(&temp, sizeof(unsigned long), 1, f);
     }
@@ -127,11 +128,11 @@ void AtariObj::WriteNode(FILE* pFile, ObjNode* pNode)
         for (long i = 0; i < pNode->pPart->faceCount; i++)
         {
             temp = _byteswap_ulong(pNode->pPart->faces[i].v1);
-			fwrite(&temp, sizeof(unsigned long), 1, pFile);
+            fwrite(&temp, sizeof(unsigned long), 1, pFile);
             temp = _byteswap_ulong(pNode->pPart->faces[i].v2);
-			fwrite(&temp, sizeof(unsigned long), 1, pFile);
+            fwrite(&temp, sizeof(unsigned long), 1, pFile);
             temp = _byteswap_ulong(pNode->pPart->faces[i].v3);
-			fwrite(&temp, sizeof(unsigned long), 1, pFile);
+            fwrite(&temp, sizeof(unsigned long), 1, pFile);
         }
     }
     else
@@ -167,65 +168,137 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     std::vector<ObjFace>* pLeftFaces = new std::vector<ObjFace>();
     std::vector<ObjFace>* pRightFaces = new std::vector<ObjFace>();
 
+    /* Notes from Doug
+    
+    For deciding number of planes to try:
+
+    - use something like min_tries+(log(1+group_size)) as a guide for the number of plane trials in a group, where min_tries is a min number
+        to try for any group (but never more than the actual group_size of course! make sure it is capped). this will allow more planes to be
+        tried for larger groups, but avoid exponential cost and wasted trials in an already diverse pool. choosing a good plane is more important
+        in smaller groups than it is in larger ones because there are many small groups at the tree leaves and these need to be 'evaporated' very efficiently.
+
+    For scoring:
+
+    - calculate partition ratio of a:b
+         pr = min(a,b) / max(a,b)
+        yields range 0+e -> 1.0 (can get close to zero, but avoiding zero)
+        where e.g.: 1.0 = perfectly balanced, 0.01 = poorly balanced, 100:1 ratio
+        better to reduce scoring sensitivity to medium-good balance, high sensitivity to poor-medium balance.
+        best done with a power/compression curve on range 0-1 e.g.
+         score = pow(pr,0.35-0.85)
+        compresses values >0.25 nearer 1.0
+        so:
+             balance_ratio = pow((min(a,b)/max(a,b)), 0.5);
+
+    -  calculate ratio of [S] to the rest
+        bit more tricky - using same ratio calculation for splits, a value near 1.0 would be a bad outcome so it needs to be inverted
+            i.e. equally balanced splits to non-splits would be an inefficient output. a low ratio of splits to non-splits is preferred
+             split = count [S]
+             nonsplit = count [F] + count [B]
+             raw_split_ratio = min(split,nonsplit)/max(split,nonsplit)
+            same range 0+e -> 1.0, but  where 1.0 = bad. (small ratios are range-compressed due to divide, so more sensitive near 1.0, less near 0.0)
+             inverted_ratio = (1.0 - raw_split_ratio), now 1.0 = good, (but large ratios are compressed. i.e. more sensitive nearer 0.0, less near 1.0)
+            since we care more about selections near the 'good' end of the range (near 1.0), we want to correct the curve with another pow()
+             split_ratio = pow(inverted_ratio, 3.0)
+
+    - combine the scores:
+            - this takes some care. each score (splitting or balancing) might dominate at different stages of the tree.
+            - near the tree root, picking decent planes is less important but creating lots of splits is also bad. so you want both to get a fair contribution,
+                with perhaps balancing being dominant.
+            - near the leaves, perhaps let the splitting score dominate more
+        - multplying the two scores into a final score will effectively punish a plane
+
+    */
+
 
     // try out different plane options and find a reasonable balance (left/right of around 3:1 tops)
     // also need to try and minimise the number of polys that get split 
     long bestVert = -1;
     int bestAxis = -1;
     float ratio = 999999.9f;
+    float dp;
+    float dq;
     int bestScore = 99999999;
-    int face = std::rand() % pFaces->size(); // random enough for this
-    float fudge = 0.0f;
+    int bestSplit = 0;
+    int face;
+    int bestGroupingScore = 0;
+    int faceAttempts = (pFaces->size() < 5 ? pFaces->size() : 5);
+    float fudge = 0.1f;
 
     fV3* verts = fpVerts->data();
+    std::set<int> testedFaces;
 
-    // for each vert in the chosen face
-    for (int i = 0; i < 3; i++)
+    while (faceAttempts--)
     {
-        long vert = ((long*)pFaces->data())[face * 3 + i];
+        face = std::rand() % pFaces->size(); // random enough for this
 
-        // we test each axis as a partitioning plane
-        // 0 for x, 1 for y, 2 for z - same type used in the ObjPlane struct
-        for (int j = 0; j < 3; j++)
+        auto search = testedFaces.find(face);
+        while (search != testedFaces.end())
         {
-            float axisOffset = verts[vert].v[j];
-			int score = 0;
-            int splitCount = 0;
+            search = testedFaces.find(face);
+        }
 
-            // sift faces to left and right based on verts being greater
-            // or less than the offset - on the line doesn't matter either
-            // way hence both <= and >=
-            for (int k = 0; k < pFaces->size(); k++)
+        // for each vert in the chosen face
+        for (int i = 0; i < 3; i++)
+        {
+            long vert = ((long*)pFaces->data())[face * 3 + i];
+
+            // we test each axis as a partitioning plane
+            // 0 for x, 1 for y, 2 for z - same type used in the ObjPlane struct
+            for (int j = 0; j < 3; j++)
             {
-                ObjFace face = (*pFaces)[k];
+                float axisOffset = verts[vert].v[j];
+                int score = 0;
+                int splitCount = 0;
 
-                if (verts[face.v1].v[j] <= axisOffset + fudge
-                    && verts[face.v2].v[j] <= axisOffset + fudge
-                    && verts[face.v3].v[j] <= axisOffset + fudge)
+                // sift faces to left and right based on verts being greater
+                // or less than the offset - on the line doesn't matter either
+                // way hence both <= and >=
+                for (int k = 0; k < pFaces->size(); k++)
                 {
-                    score++;
-                }
-                else if (verts[face.v1].v[j] >= axisOffset - fudge
-                    && verts[face.v2].v[j] >= axisOffset - fudge
-                    && verts[face.v3].v[j] >= axisOffset - fudge)
-                {
-                    score--;
-                }
-                else
-                {
-                    splitCount++;
-                }
-            }
+                    ObjFace face = (*pFaces)[k];
 
-            int finalScore = 1 * (abs(score) * abs(score)) + (splitCount * splitCount);
-            
-            if (finalScore < bestScore)
-            {
-                bestScore = finalScore;
-                bestAxis = j;
-                bestVert = vert;
+                    if (verts[face.v1].v[j] <= axisOffset + fudge
+                        && verts[face.v2].v[j] <= axisOffset + fudge
+                        && verts[face.v3].v[j] <= axisOffset + fudge)
+                    {
+                        score++;
+                    }
+                    else if (verts[face.v1].v[j] >= axisOffset - fudge
+                        && verts[face.v2].v[j] >= axisOffset - fudge
+                        && verts[face.v3].v[j] >= axisOffset - fudge)
+                    {
+                        score--;
+                    }
+                    else
+                    {
+                        splitCount++;
+                    }
+                }
+
+                int finalScore = 1 * (abs(score) * abs(score)) + (splitCount * splitCount);
+
+                if (finalScore < bestScore)
+                {
+                    bestScore = finalScore;
+                    bestGroupingScore = score;
+                    bestAxis = j;
+                    bestVert = vert;
+                    bestSplit = splitCount;
+                }
             }
         }
+    }
+
+    // check we managed to actually divide the group, if not we'll call it a day for now
+    if (bestGroupingScore == pFaces->size() && bestSplit == 0)
+    {
+        node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
+        node->pPart->faces = &(*pFaces)[0];
+        node->pPart->faceCount = (long)pFaces->size();
+        node->pLeft = NULL;
+        node->pRight = NULL;
+        return;
     }
 
     // once the best score is found, go ahead and divide up the faces, splitting where necessary
@@ -271,9 +344,12 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             // then work out where the cut is and calculate new faces accordingly
             // p will be the point between 0 & 1, q will be the point between 0 & 2
 
+
+            // there are some bugs in this rotating that mean we're not actually splitting triangles resulting in one side of the tree being empty
+
             if (faceVerts[0].v[bestAxis] <= bestAxisOffset)
             {
-                if (faceVerts[1].v[bestAxis] <= bestAxisOffset)
+                if (faceVerts[1].v[bestAxis] < bestAxisOffset)
                 {
                     // 1 is on the same side as 0, 'rotate' opposite to winding
                     i0 = 1;
@@ -281,7 +357,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                     i2 = 0;
                  
                 }
-                else if(faceVerts[2].v[bestAxis] <= bestAxisOffset)
+                else if(faceVerts[2].v[bestAxis] < bestAxisOffset)
                 {
                     // 2 is on the same side as 0, 'rotate' with winding
                     i0 = 2;
@@ -291,7 +367,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
             }
             else
             {
-                if (faceVerts[1].v[bestAxis] >= bestAxisOffset)
+                if (faceVerts[1].v[bestAxis] > bestAxisOffset)
                 {
                     // 1 is on the same side as 0
                     i0 = 1;
@@ -299,7 +375,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                     i2 = 0;
 
                 }
-                else if(faceVerts[2].v[bestAxis] >= bestAxisOffset)
+                else if(faceVerts[2].v[bestAxis] > bestAxisOffset)
                 {
                     // 2 is on the same side as 0
                     i0 = 2;
@@ -308,8 +384,8 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 }
             }
 
-            float dp = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i1].v[bestAxis] - faceVerts[i0].v[bestAxis]);
-            float dq = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i2].v[bestAxis] - faceVerts[i0].v[bestAxis]);
+            dp = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i1].v[bestAxis] - faceVerts[i0].v[bestAxis]);
+            dq = (bestAxisOffset - faceVerts[i0].v[bestAxis]) / (faceVerts[i2].v[bestAxis] - faceVerts[i0].v[bestAxis]);
 
             // if either dp or dq are 1 then we've got a special case scenario where we'll only have two triangles after splitting
 
@@ -365,7 +441,7 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 side2 = pLeftFaces;
             }
 
-            if (dp > 0.0f && dq >= 0.0f)
+            if (fabs(dp) >= 0.01f && fabs(dq) >= 0.01f)
             {
                 face.v1 = faceIndices[i0];
                 face.v2 = ip;
@@ -373,21 +449,23 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 side1->push_back(face);
             }
 
-			// do we need some fudge here?
-			if (dp == 1.0f)
-			{
-				face.v1 = ip;
-				face.v2 = faceIndices[i1];
-				face.v3 = faceIndices[i2];
-				side2->push_back(face);
-			}
+            // if dp  is ~1.0f then it's at the second vert, so we skip this triangle
+            if (fabs(1.0f - dp) > 0.01f)
+            {
+                face.v1 = ip;
+                face.v2 = faceIndices[i1];
+                face.v3 = faceIndices[i2];
+                side2->push_back(face);
+            }
 
-			if (dq == 1.0f)
-			{
-				face.v2 = faceIndices[i2];
-				face.v3 = iq;
-				side2->push_back(face);
-			}
+            // likewise, if dq is ~1.0f then it's at the third vert, and we skip this one
+            if (fabs(1.0f - dq) >= 0.01f)
+            {
+                face.v1 = ip;
+                face.v2 = faceIndices[i2];
+                face.v3 = iq;
+                side2->push_back(face);
+            }
         }
     }
 
@@ -395,8 +473,27 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
     node->hyperplane.distance = (fx32)(FX_ONE * bestAxisOffset);
     node->hyperplane.orientation = bestAxis;
 
-    // if everything is on one side, and we've tried multiple faces, then we're probably just SOL
-    // and should kick out a leaf 
+    // for now we're going to just lump some things together here, getting pairs of polys that should really
+    // be counted as convex but aren't (see Debug2.obj)
+    if (pLeftFaces->size() == 0 || pRightFaces->size() == 0)
+    {
+        node->pPart = (ObjPart*)malloc(sizeof(ObjPart));
+
+        if (pLeftFaces->size())
+        {
+            node->pPart->faces = &(*pLeftFaces)[0];
+            node->pPart->faceCount = (long)pLeftFaces->size();
+        }
+        else
+        {
+            node->pPart->faces = &(*pRightFaces)[0];
+            node->pPart->faceCount = (long)pRightFaces->size();
+        }
+
+        node->pLeft = NULL;
+        node->pRight = NULL;
+        return;
+    }
 
     if (pLeftFaces->size())
     {
