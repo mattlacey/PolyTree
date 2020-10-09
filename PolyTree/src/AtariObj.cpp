@@ -352,17 +352,17 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 if (faceVerts[1].v[bestAxis] < bestAxisOffset)
                 {
                     // 1 is on the same side as 0, 'rotate' opposite to winding
-                    i0 = 1;
-                    i1 = 2;
-                    i2 = 0;
+                    i0 = 2;
+                    i1 = 0;
+                    i2 = 1;
                  
                 }
                 else if(faceVerts[2].v[bestAxis] < bestAxisOffset)
                 {
                     // 2 is on the same side as 0, 'rotate' with winding
-                    i0 = 2;
-                    i1 = 0;
-                    i2 = 1;
+                    i0 = 1;
+                    i1 = 2;
+                    i2 = 0;
                 }
             }
             else
@@ -370,17 +370,17 @@ void AtariObj::GenerateNode(ObjNode* node, std::vector<ObjFace>* pFaces)
                 if (faceVerts[1].v[bestAxis] > bestAxisOffset)
                 {
                     // 1 is on the same side as 0
-                    i0 = 1;
-                    i1 = 2;
-                    i2 = 0;
+                    i0 = 2;
+                    i1 = 0;
+                    i2 = 1;
 
                 }
                 else if(faceVerts[2].v[bestAxis] > bestAxisOffset)
                 {
                     // 2 is on the same side as 0
-                    i0 = 2;
-                    i1 = 0;
-                    i2 = 1;
+                    i0 = 1;
+                    i1 = 2;
+                    i2 = 0;
                 }
             }
 
