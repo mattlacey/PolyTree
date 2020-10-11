@@ -181,7 +181,12 @@ int main(int argc, char** argv)
 
             obj = new AtariObj(textBuffer);
         }
-        else if (fileDialog.showFileDialog(SAVE_FILE, imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(100, 100), ".lto,.LTO"))
+        else
+        {
+            showFileDialog = 0;
+        }
+
+        if (fileDialog.showFileDialog(SAVE_FILE, imgui_addons::ImGuiFileBrowser::DialogMode::SAVE, ImVec2(100, 100), ".lto,.LTO"))
         {
             strcpy(textBuffer, fileDialog.selected_path.c_str());
             showSaveFileDialog = false;
@@ -190,6 +195,10 @@ int main(int argc, char** argv)
             {
                 obj->WriteTree(textBuffer);
             }
+        }
+        else
+        {
+            showSaveFileDialog = 0;
         }
 
         ImGui::Begin("Object Info", NULL);
